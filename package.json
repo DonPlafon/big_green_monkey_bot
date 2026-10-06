@@ -1,0 +1,33 @@
+{
+  "name": "big_green_monkey_bot",
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tgcloud/cli": "^0.2.0",
+    "prettier": "^3.9.9",
+    "vite": "^8.3.3"
+  },
+  "version": "0.3.1",
+  "description": "Multi-chat join requests and inline captcha on Telegram Serverless",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "type": "module",
+  "scripts": {
+    "deploy": "npm test && npm run build && tgcloud migrate --local --safe && tgcloud push && tgcloud webhook sync",
+    "test": "node --experimental-vm-modules --test tests/*.test.mjs",
+    "check:cloud": "node scripts/cloud-check.mjs",
+    "setup:bot": "node scripts/cloud-check.mjs --setup",
+    "status": "tgcloud status",
+    "run": "tgcloud run",
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test:ui": "playwright test",
+    "format": "prettier --write web tgcloud/endpoints tgcloud/lib/miniapp.js"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0"
+  }
+}

@@ -1,0 +1,10 @@
+.tgcloud/
+node_modules/
+.env
+.env.*
+!.env.example
+coverage/
+*.zip
+dist/
+test-results/
+playwright-report/
