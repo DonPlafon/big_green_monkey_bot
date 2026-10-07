@@ -7,17 +7,20 @@ const setup = process.argv.includes('--setup');
 const source = `
 import { api, db, EndpointError } from 'sdk';
 import message from 'handlers/message';
+import edited from 'handlers/edited_message';
 import callback from 'handlers/callback_query';
 import joined from 'handlers/chat_member';
 import request from 'handlers/chat_join_request';
 import membership from 'handlers/my_chat_member';
 import { chats } from 'schema';
 import { claimJob, finishJob } from 'lib/store';
+import { claimFilterNotice } from 'lib/filters';
 import * as miniapp from 'lib/miniapp';
 export default async function () {
   const me = await api.getMe();
   const count = await db.$count(chats);
   const probeId = 'healthcheck:' + Date.now();
+  const noticeProbeId = Date.now(); // real group IDs are negative
   let persistence;
   try {
     const claimed = await claimJob(probeId);
@@ -25,8 +28,13 @@ export default async function () {
     await finishJob(probeId);
     const row = await db.get('SELECT state FROM jobs WHERE id = :id', {':id':probeId});
     persistence = claimed && !duplicate && row.state === 'done';
+    persistence = persistence && await claimFilterNotice(noticeProbeId)
+      && !await claimFilterNotice(noticeProbeId);
     if (!persistence) throw new Error('database round-trip failed');
-  } finally { await db.run('DELETE FROM jobs WHERE id = :id', {':id':probeId}); }
+  } finally {
+    await db.run('DELETE FROM jobs WHERE id = :id', {':id':probeId});
+    await db.run('DELETE FROM filter_notices WHERE chat_id = :id', {':id':noticeProbeId});
+  }
   let authentication = false;
   try { await miniapp.endpoint(miniapp.getChats)({},{}); }
   catch (error) { authentication = error instanceof EndpointError; }
@@ -36,7 +44,7 @@ export default async function () {
   await api.setMyShortDescription({short_description:'спокойный вход в твои чаты'});
   await api.setChatMenuButton({menu_button:{type:'web_app',text:'управление',web_app:{url:'https://app'+me.id+'.tgcloud.ai/'}}});` : ''}
   const menu = await api.getChatMenuButton({});
-  return { username: me.username, tablesReady: true, persistence, authentication, chats: count, menu: menu.type, compiledHandlers: [message,callback,joined,request,membership].length };
+  return { username: me.username, tablesReady: true, persistence, authentication, chats: count, menu: menu.type, compiledHandlers: [message,edited,callback,joined,request,membership].length };
 }`;
 await writeFile(path, source, { flag:'wx' });
 try {

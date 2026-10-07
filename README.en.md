@@ -103,6 +103,20 @@ Initial connection requires permission to appoint the bot as an administrator. S
 
 Avatars load independently of settings. The bot tries to resolve a public Telegram image URL by username, falling back to `t.me/i/userpic/320/<username>.jpg` when the public page is unavailable. This route is best-effort, not a guaranteed Bot API method; failed images leave the initial visible. Private chats without usernames use initials. Resolved metadata is cached for up to an hour and the fallback URL for five minutes.
 
+## Guest mode filters
+
+Open a group’s **фильтры** (filters). The Mini App and inline bot menu share three switches:
+
+- **удалять все ответы** — delete every guest bot response, including those invoked by administrators.
+- **только для участников** — when the full block is off, check the invoking user’s live membership, latest captcha and individual sending restriction. Owners and administrators are allowed. Existing members who were never issued a captcha do not need a new one. Calls on behalf of external channels are rejected because their owner’s membership cannot be verified; anonymous administrators of this group are allowed.
+- **объяснять удаление** — explain a deletion with a short request to join, finish the captcha, or write without a guest bot. Notices are quiet, never quote spam or reply to the guest bot, and are limited to one per group per minute.
+
+Filters start disabled and respect the chat’s main pause switch. Ordinary messages and inline-bot results (`via_bot`) are unaffected. New and edited messages are handled; old history is not scanned. Deletion follows an incoming update, so a message can briefly appear before removal.
+
+**Telegram setup:** the bot owner must enable **Bot-to-Bot Communication Mode** in [@BotFather](https://t.me/BotFather). [Telegram documents](https://core.telegram.org/bots/features#bot-to-bot-communication) that this lets administrator bots receive other bots’ group messages. This is separate from Guest Mode; the moderator does not need Guest Mode enabled. Grant the bot **delete messages** in the group. New chat connections request this right; existing groups need it added manually. A filter cannot delete an event Telegram does not deliver.
+
+Deletions and errors are recorded in the journal, with a **фильтры** journal filter and a deletion counter in statistics. Removed message text, links and media are not stored.
+
 ## Remove a chat from your list
 
 Open a chat in the Mini App or inline bot menu → **убрать из списка** (remove from list) → **убрать** (remove). If access is lost, only a card with the saved chat title and type, an access retry and the removal action remains. Settings, members, logs and statistics require current administrator rights.

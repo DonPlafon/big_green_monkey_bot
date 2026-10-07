@@ -118,7 +118,7 @@ export async function createRuntime() {
     async connect(id=-1001,userId=1,kind='supergroup') {
       chatInfo.set(id,{id,title:`chat ${id}`,type:kind,permissions:{can_send_messages:true,can_send_photos:true}});
       members.set(`${id}:${userId}`,{status:'creator',user:{id:userId}});
-      members.set(`${id}:999`,{status:'administrator',can_invite_users:true,can_restrict_members:true,user:{id:999}});
+      members.set(`${id}:999`,{status:'administrator',can_invite_users:true,can_restrict_members:true,can_delete_messages:true,user:{id:999}});
       const store=await this.module('lib/store'); await store.connectChat(chatInfo.get(id),userId);
       return store;
     },

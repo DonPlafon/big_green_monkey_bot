@@ -47,6 +47,7 @@ export async function settings(target, chat) {
     [button('ожидают проверки', control(chat,'waiting'))]);
   if (chat.mode !== 'captcha') rows.push([button('ссылка с заявкой', control(chat,'invite'))]);
   if (chat.mode === 'requests') rows.push([button('ожидают проверки',control(chat,'waiting'))]);
+  if (chat.kind !== 'channel') rows.push([button('фильтры',control(chat,'filters'))]);
   rows.push([button('статистика', control(chat,'stats')), button('журнал', control(chat,'logs'))],
     [button('проверить права', control(chat,'rights'))],
     [button('убрать из списка', control(chat,'remove'))], [button('‹ твои чаты', 'home:0')]);
@@ -57,6 +58,16 @@ export async function unavailableChat(target, chat) {
   return render(target, `${title(chat)}\nнет доступа\n\nбот или твой аккаунт больше не может управлять чатом.`,
     [[button('проверить снова', control(chat,'show'))],
       [button('убрать из списка', control(chat,'remove'))], [button('‹ твои чаты', 'home:0')]]);
+}
+export async function filters(target, chat) {
+  if (chat.kind === 'channel') throw new UserError('фильтры доступны только в группах');
+  const toggle = (label, field, action) => [button(`${chat[field] ? '●' : '○'} ${label}`, control(chat, action, chat[field] ? 0 : 1))];
+  return render(target, `${title(chat)}\n<b>guest mode</b>\n\nдля фильтра включи bot-to-bot communication в botfather и дай боту право удалять сообщения.`, [
+    toggle('удалять все ответы', 'block_guest', 'guestall'),
+    ...(!chat.block_guest ? [toggle('только для участников', 'guest_members_only', 'guestmembers')] : []),
+    toggle('объяснять удаление', 'guest_notice', 'guestnotice'),
+    back(chat),
+  ]);
 }
 export async function confirmRemoval(target, chat) {
   return render(target, `${title(chat)}\nубрать из твоего списка?\n\nнастройки и работа бота сохранятся. для остановки поставь чат на паузу.`,
@@ -102,11 +113,11 @@ export async function connectShared(message) {
   return settings({ chatId: userId }, config);
 }
 const EVENT_NAMES = { request:'заявка', approved:'принят', captcha:'капча отправлена', passed:'капча пройдена',
-  declined:'заявка отклонена', held:'ожидает решения', delivery_error:'капча не доставлена', failed:'удалён', manual:'пропущен админом', error:'ошибка проверки', unavailable:'нет прав бота' };
+  declined:'заявка отклонена', held:'ожидает решения', delivery_error:'капча не доставлена', failed:'удалён', manual:'пропущен админом', error:'ошибка проверки', unavailable:'нет прав бота', guest_deleted:'гостевое сообщение удалено', filter_error:'ошибка удаления' };
 export async function statistics(target, chat) {
   const counts = Object.fromEntries((await stats(chat.id)).map(row => [row.kind, row.total]));
   const waiting = await pending(chat.id);
-  return render(target, `${title(chat)}\n<b>статистика · всё время</b>\n\nзаявок: ${counts.request || 0}\nпринято: ${counts.approved || 0}\n\nкапч: ${counts.captcha || 0}\nпрошли: ${counts.passed || 0}\nпропущено вручную: ${counts.manual || 0}\nотклонено: ${counts.declined || 0}\nкапча не доставлена: ${counts.delivery_error || 0}\nудалено: ${counts.failed || 0}\nожидают: ${waiting?.total || 0}`,
+  return render(target, `${title(chat)}\n<b>статистика · всё время</b>\n\nзаявок: ${counts.request || 0}\nпринято: ${counts.approved || 0}\n\nкапч: ${counts.captcha || 0}\nпрошли: ${counts.passed || 0}\nпропущено вручную: ${counts.manual || 0}\nотклонено: ${counts.declined || 0}\nкапча не доставлена: ${counts.delivery_error || 0}\nудалено: ${counts.failed || 0}\nожидают: ${waiting?.total || 0}\nгостевых сообщений удалено: ${counts.guest_deleted || 0}`,
     [[button('обновить', control(chat,'stats'))],back(chat)]);
 }
 export async function logs(target, chat, page = 0) {

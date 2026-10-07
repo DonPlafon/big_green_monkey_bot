@@ -50,6 +50,8 @@ export const eventNames = {
   error: "ошибка проверки",
   unavailable: "не хватает прав",
   delivery_error: "капча не доставлена",
+  guest_deleted: "гостевое сообщение удалено",
+  filter_error: "ошибка удаления",
 };
 export const stateNames = {
   new: "проверка готовится",

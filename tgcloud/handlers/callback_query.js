@@ -1,9 +1,10 @@
 import { api } from 'sdk';
-import { home, help, settings, choose, openPicker, pageTarget, statistics, logs, waiting, invite, render, button, unavailableChat, confirmRemoval } from '../lib/ui.js';
+import { home, help, settings, choose, openPicker, pageTarget, statistics, logs, waiting, invite, render, button, unavailableChat, confirmRemoval, filters } from '../lib/ui.js';
 import { getChat, setChat } from '../lib/store.js';
 import { authorize, checkBot, answer, UserError } from '../lib/telegram.js';
 import { solveCaptcha, manuallyPass } from '../lib/captcha.js';
 import { savedChat, removeSavedChat } from '../lib/chat-list.js';
+import { setGuestFilter } from '../lib/filter-settings.js';
 
 export default async function (query) {
   if (query.from.is_bot) return;
@@ -36,6 +37,15 @@ export default async function (query) {
       const saved = await savedChat(chatId,query.from.id);
       await answer(query); acknowledged = true;
       return await unavailableChat(target,saved);
+    }
+    const filterKeys = { guestall:'blockGuest', guestmembers:'guestMembersOnly', guestnotice:'guestNotice' };
+    if (action === 'filters' || Object.hasOwn(filterKeys,action)) {
+      if (action !== 'filters') {
+        if (!['0','1'].includes(value)) throw new UserError('кнопка устарела');
+        await setGuestFilter(chat,filterKeys[action],value === '1');
+      }
+      await answer(query); acknowledged = true;
+      return await filters(target,await getChat(chatId));
     }
     if (action === 'enabled') {
       if (!['0','1'].includes(value)) throw new UserError('кнопка устарела');

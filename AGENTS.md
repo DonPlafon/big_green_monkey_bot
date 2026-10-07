@@ -13,6 +13,11 @@ for intentional limits (no scheduler, broadcasts, or timeout enforcement).
 Run `npm test` on Node 24+ before deploying. Never deploy the temporary
 `tgcloud/handlers/poll_answer.js` created by `scripts/cloud-check.mjs` while it is running.
 Chat permissions must be verified live on every administrator action.
+Guest filters run on `message` and `edited_message`, before ignoring bot senders.
+Identify guest replies by `guest_bot_caller_user/chat`; check the caller, not
+`message.from`. Never treat `via_bot` or a nested reply as a guest response.
+Bot-to-Bot Communication Mode in BotFather and delete rights are prerequisites.
+Keep notices rate-limited and never reply to/quote a guest bot or repeat spam.
 
 A **Telegram bot with a Mini App** running on Telegram's serverless platform. You write
 JavaScript modules (database schema, shared library code, update handlers); the

@@ -14,9 +14,9 @@ export async function authorize(chatId, userId) {
   if (!canManage(member, chat.kind)) throw new UserError('нужны права управления участниками');
   return chat;
 }
-export async function checkBot(chatId, mode) {
+export async function checkBot(chatId, mode, config) {
   const me = await api.getMe(), member = await api.getChatMember({ chat_id: chatId, user_id: me.id });
-  const missing = missingRights(member, mode);
+  const missing = missingRights(member, mode, config ?? await getChat(chatId));
   if (missing) throw new UserError(missing);
   return member;
 }

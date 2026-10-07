@@ -18,6 +18,9 @@ async function bridge(page) {
         attempts: 3,
         failureAction: "hold",
         cleanSuccess: true,
+        blockGuest: false,
+        guestMembersOnly: false,
+        guestNotice: false,
       },
       {
         id: -1002,
@@ -380,4 +383,59 @@ test("inaccessible chat exposes no management controls and can be removed from a
   await page.getByRole("button", { name: "убрать", exact: true }).click();
   await expect(page.getByRole("heading", { name: "твои чаты" })).toBeVisible();
   await expect(page.locator(".chat-row")).toHaveCount(2);
+});
+
+test("guest filters persist independently, keep the sheet open and surface failed saves", async ({
+  page,
+}) => {
+  await bridge(page);
+  await page.goto("/#/chat/-1001/settings");
+  await page.getByRole("button", { name: "фильтры выкл" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("switch", { name: "только для участников" }).click();
+  await expect(
+    dialog.getByRole("switch", { name: "только для участников" }),
+  ).toBeChecked();
+  await dialog.getByRole("switch", { name: "объяснять удаление" }).click();
+  await expect(
+    dialog.getByRole("switch", { name: "объяснять удаление" }),
+  ).toBeChecked();
+  await dialog.getByRole("switch", { name: "удалять все ответы" }).click();
+  await expect(
+    dialog.getByRole("switch", { name: "удалять все ответы" }),
+  ).toBeChecked();
+  await expect(
+    dialog.getByRole("switch", { name: "только для участников" }),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: test.info().outputPath("guest-filters.png"),
+    fullPage: true,
+  });
+  await dialog.getByRole("switch", { name: "удалять все ответы" }).click();
+  await expect(
+    dialog.getByRole("switch", { name: "только для участников" }),
+  ).toBeEnabled();
+  await page.evaluate(() => (window.testFailSave = true));
+  await dialog.getByRole("switch", { name: "объяснять удаление" }).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(
+    dialog.getByRole("switch", { name: "объяснять удаление" }),
+  ).toBeChecked();
+  await page.evaluate(() => (window.testFailSave = false));
+  await dialog.getByRole("button", { name: "закрыть" }).click();
+  await page.getByRole("button", { name: "фильтры включены" }).click();
+  await expect(
+    dialog.getByRole("switch", { name: "только для участников" }),
+  ).toBeChecked();
+  const saved = await page.evaluate(() =>
+    window.testCalls.filter((c) => c.name === "updateChat"),
+  );
+  expect(
+    saved.every(
+      (c) => typeof c.input.value === "boolean" && c.input.chatId === -1001,
+    ),
+  ).toBe(true);
+  await dialog.getByRole("button", { name: "закрыть" }).click();
+  await page.goto("/#/chat/-1002/settings");
+  await expect(page.getByRole("button", { name: /^фильтры/ })).toHaveCount(0);
 });

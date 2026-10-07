@@ -12,6 +12,9 @@ export const chats = table('chats', {
   failure_action: text('failure_action').notNull().default('retry'),
   request_failure: text('request_failure').notNull().default('hold'),
   clean_success: integer('clean_success').notNull().default(1),
+  block_guest: integer('block_guest').notNull().default(0),
+  guest_members_only: integer('guest_members_only').notNull().default(0),
+  guest_notice: integer('guest_notice').notNull().default(0),
   request_link: text('request_link'),
   created_at: integer('created_at').notNull(),
 });
@@ -53,4 +56,9 @@ export const events = table('events', {
 }, t => ({ chatIdx: index('events_chat_time').on(t.chat_id, t.created_at) }));
 export const jobs = table('jobs', {
   id: text('id').primaryKey(), state: text('state').notNull(), locked_at: integer('locked_at').notNull(),
+});
+// One durable cooldown per chat, shared by all callers and concurrent updates.
+export const filterNotices = table('filter_notices', {
+  chat_id: integer('chat_id').primaryKey(),
+  next_at: integer('next_at').notNull(),
 });

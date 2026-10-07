@@ -27,15 +27,17 @@ export function canManage(member, kind) {
   return member?.status === 'creator' || (member?.status === 'administrator'
     && member.can_invite_users === true && (kind === 'channel' || member.can_restrict_members === true));
 }
-export function missingRights(member, mode) {
+export const hasGuestFilter = chat => !!(chat?.block_guest || chat?.guest_members_only);
+export function missingRights(member, mode, chat) {
   if (!isAdmin(member)) return 'нужны права администратора';
   if (!member.can_invite_users && member.status !== 'creator') return 'нужно право приглашать участников';
   if (mode === 'captcha' && !member.can_restrict_members && member.status !== 'creator') return 'нужно право ограничивать участников';
+  if (hasGuestFilter(chat) && !member.can_delete_messages && member.status !== 'creator') return 'нужно право удалять сообщения';
   return null;
 }
 export function adminRights(channel) {
   return {
-    is_anonymous: false, can_manage_chat: true, can_delete_messages: false,
+    is_anonymous: false, can_manage_chat: true, can_delete_messages: !channel,
     can_manage_video_chats: false, can_restrict_members: !channel,
     can_promote_members: false, can_change_info: false, can_invite_users: true,
     can_post_stories: false, can_edit_stories: false, can_delete_stories: false,

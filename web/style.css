@@ -582,8 +582,17 @@ h2 {
 }
 .filter-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 15px;
+}
+.guest-help {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.guest-help p + p {
+  margin-top: 14px;
 }
 .chip {
   flex: 1;

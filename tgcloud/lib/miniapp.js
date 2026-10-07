@@ -13,6 +13,7 @@ import { manuallyPass } from "./captcha.js";
 import { requestButton } from "./ui.js";
 import { savedChat, removeSavedChat } from "./chat-list.js";
 import { chatPhoto } from "./avatars.js";
+import { FILTER_COLUMNS, setGuestFilter } from "./filter-settings.js";
 
 // Authentication is supplied by Telegram. Live authorization protects chat data
 // and moderation; personal list metadata/removal grants no access to either.
@@ -69,6 +70,9 @@ function publicChat(row) {
     failureAction:
       row.mode === "requestcaptcha" ? row.request_failure : row.failure_action,
     cleanSuccess: !!row.clean_success,
+    blockGuest: !!row.block_guest,
+    guestMembersOnly: !!row.guest_members_only,
+    guestNotice: !!row.guest_notice,
   };
 }
 export async function getChats(input, userId) {
@@ -117,6 +121,12 @@ export async function updateChat(input, userId) {
   const id = chatId(input),
     chat = await authorize(id, userId);
   const { key, value } = input;
+  if (Object.hasOwn(FILTER_COLUMNS, key)) {
+    if (typeof value !== "boolean")
+      throw new EndpointError("неверная настройка", { code: "INVALID_INPUT" });
+    await setGuestFilter(chat, key, value);
+    return { chat: publicChat(await getChat(id)) };
+  }
   const columns = {
     mode: "mode",
     enabled: "enabled",
@@ -187,7 +197,9 @@ export async function getEvents(input, userId) {
     all: "",
     admissions: " AND kind IN ('request','approved','declined','manual')",
     captcha: " AND kind IN ('captcha','passed','failed','held')",
-    errors: " AND kind IN ('error','unavailable','delivery_error')",
+    filters: " AND kind IN ('guest_deleted','filter_error')",
+    errors:
+      " AND kind IN ('error','unavailable','delivery_error','filter_error')",
   };
   if (!Object.hasOwn(filters, filter))
     throw new EndpointError("неверный фильтр", { code: "INVALID_INPUT" });

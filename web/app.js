@@ -152,6 +152,15 @@ function chooseSetting(key) {
   );
 }
 
+function guestFiltersBody(c) {
+  const toggle = (key, label, disabled = false) =>
+    `<button class="setting row" data-action="guest-toggle" data-key="${key}" role="switch" aria-checked="${!!c[key]}" ${disabled ? "disabled" : ""}><span>${label}</span><span class="toggle ${c[key] ? "on" : ""}" aria-hidden="true"><i></i></span></button>`;
+  return `<div class="card">${toggle("blockGuest", "удалять все ответы")}${toggle("guestMembersOnly", "только для участников", c.blockGuest)}${toggle("guestNotice", "объяснять удаление")}</div><button class="more" data-action="guest-help">как включить</button>`;
+}
+function showGuestFilters() {
+  openSheet("guest mode", guestFiltersBody(state.chat));
+}
+
 function skeleton() {
   return `<div class="skeleton-stack" aria-label="загрузка"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>`;
 }
@@ -163,7 +172,7 @@ function renderHome() {
 }
 function settingsView() {
   const c = state.chat;
-  return `<div class="settings-stack"><div class="card">${row("режим", modes[c.mode], "choose", 'data-key="mode"')}</div>${c.mode !== "requests" ? `<div class="section-heading"><span>проверка</span></div><div class="card">${row("задание", c.captchaType === "emoji" ? "эмодзи" : "пример", "choose", 'data-key="captchaType"')}${row("попытки", c.attempts, "choose", 'data-key="attempts"')}${row("если не прошёл", failures[c.failureAction], "choose", 'data-key="failureAction"')}${c.mode === "captcha" ? `<button class="setting row" data-action="clean" role="switch" aria-checked="${c.cleanSuccess}"><span>убирать капчу</span><span class="toggle ${c.cleanSuccess ? "on" : ""}" aria-hidden="true"><i></i></span></button>` : ""}</div>` : ""}<div class="card utility">${c.mode !== "captcha" ? `<button class="setting row" data-action="invite"><span class="row-label">${icon("link")} ссылка с заявкой</span>${icon("arrow")}</button>` : ""}<button class="setting row" data-action="rights"><span class="row-label">${icon("shield")} проверить права</span>${icon("arrow")}</button></div><div class="card utility"><button class="setting row remove-action" data-action="remove"><span class="row-label">${icon("close")} убрать из списка</span>${icon("arrow")}</button></div></div>`;
+  return `<div class="settings-stack"><div class="card">${row("режим", modes[c.mode], "choose", 'data-key="mode"')}</div>${c.mode !== "requests" ? `<div class="section-heading"><span>проверка</span></div><div class="card">${row("задание", c.captchaType === "emoji" ? "эмодзи" : "пример", "choose", 'data-key="captchaType"')}${row("попытки", c.attempts, "choose", 'data-key="attempts"')}${row("если не прошёл", failures[c.failureAction], "choose", 'data-key="failureAction"')}${c.mode === "captcha" ? `<button class="setting row" data-action="clean" role="switch" aria-checked="${c.cleanSuccess}"><span>убирать капчу</span><span class="toggle ${c.cleanSuccess ? "on" : ""}" aria-hidden="true"><i></i></span></button>` : ""}</div>` : ""}${c.kind !== "channel" ? `<div class="card utility">${row("фильтры", c.blockGuest || c.guestMembersOnly ? "включены" : "выкл", "guest-filters")}</div>` : ""}<div class="card utility">${c.mode !== "captcha" ? `<button class="setting row" data-action="invite"><span class="row-label">${icon("link")} ссылка с заявкой</span>${icon("arrow")}</button>` : ""}<button class="setting row" data-action="rights"><span class="row-label">${icon("shield")} проверить права</span>${icon("arrow")}</button></div><div class="card utility"><button class="setting row remove-action" data-action="remove"><span class="row-label">${icon("close")} убрать из списка</span>${icon("arrow")}</button></div></div>`;
 }
 function waitingView() {
   if (!state.items.length)
@@ -175,6 +184,7 @@ function eventsView() {
     all: "все",
     admissions: "приём",
     captcha: "капча",
+    filters: "фильтры",
     errors: "ошибки",
   };
   const filterBar = `<div class="filter-bar" aria-label="фильтр журнала">${Object.entries(
@@ -189,7 +199,7 @@ function eventsView() {
     return (
       filterBar + empty("пока тихо", "новые события появятся здесь", "clock")
     );
-  return `${filterBar}<div class="card event-list">${state.items.map((item) => `<div class="event-row"><span class="event-icon ${["error", "delivery_error", "unavailable", "declined", "failed"].includes(item.kind) ? "warn" : ""}">${icon(["approved", "passed", "manual"].includes(item.kind) ? "check" : ["error", "delivery_error", "unavailable"].includes(item.kind) ? "alert" : "clock")}</span><span class="member-copy"><strong>${lower(item.name)}</strong><small>${eventNames[item.kind] || "событие"}</small></span><time datetime="${new Date(item.createdAt * 1000).toISOString()}">${dateLabel(item.createdAt)}</time></div>`).join("")}</div>${state.hasMore ? '<button class="more" data-action="more">показать ещё</button>' : ""}`;
+  return `${filterBar}<div class="card event-list">${state.items.map((item) => `<div class="event-row"><span class="event-icon ${["error", "delivery_error", "unavailable", "declined", "failed", "filter_error"].includes(item.kind) ? "warn" : ""}">${icon(["approved", "passed", "manual"].includes(item.kind) ? "check" : ["error", "delivery_error", "unavailable", "filter_error"].includes(item.kind) ? "alert" : "clock")}</span><span class="member-copy"><strong>${lower(item.name)}</strong><small>${eventNames[item.kind] || "событие"}</small></span><time datetime="${new Date(item.createdAt * 1000).toISOString()}">${dateLabel(item.createdAt)}</time></div>`).join("")}</div>${state.hasMore ? '<button class="more" data-action="more">показать ещё</button>' : ""}`;
 }
 function renderDetail() {
   const c = state.chat;
@@ -272,15 +282,23 @@ async function load(append = false) {
     render();
   }
 }
-async function save(key, value) {
+async function save(key, value, keepSheet = false) {
   if (busy || !state.chat) return;
   const id = state.chat.id;
-  closeSheet();
+  if (!keepSheet) closeSheet();
   busy = true;
   render();
   try {
     const result = await call("updateChat", { chatId: id, key, value });
-    if (selectedId() === id) state.chat = result.chat;
+    if (selectedId() === id) {
+      state.chat = result.chat;
+      if (keepSheet && sheet.open) {
+        sheet.querySelector(".sheet-content").innerHTML = guestFiltersBody(
+          result.chat,
+        );
+        sheet.querySelector(`[data-key="${key}"]`)?.focus();
+      }
+    }
     feedback("success");
     toast("сохранено");
   } finally {
@@ -299,6 +317,7 @@ function showStats() {
     ["заявки отклонены", state.stats.declined],
     ["удалено из группы", state.stats.failed],
     ["капча не доставлена", state.stats.delivery_error],
+    ["гостевых сообщений удалено", state.stats.guest_deleted],
   ];
   openSheet(
     "статистика",
@@ -322,6 +341,30 @@ async function action(button) {
     return load();
   }
   if (name === "choose") return chooseSetting(button.dataset.key);
+  if (name === "guest-filters") {
+    if (!busy) return showGuestFilters();
+    return;
+  }
+  if (name === "guest-toggle") {
+    if (busy) return;
+    button.disabled = true;
+    try {
+      return await save(
+        button.dataset.key,
+        !state.chat[button.dataset.key],
+        true,
+      );
+    } finally {
+      if (button.isConnected) button.disabled = false;
+    }
+  }
+  if (name === "guest-help") {
+    if (busy) return;
+    return openSheet(
+      "как включить",
+      '<div class="guest-help"><p>в botfather включи bot-to-bot communication у нашего бота.</p><p>в группе дай ему право удалять сообщения и включи бота здесь.</p><p>«только для участников» проверяет вступление и незавершённую капчу. обычные сообщения этот фильтр не трогает.</p><p>уведомление — не чаще раза в минуту на чат.</p></div>',
+    );
+  }
   if (name === "save")
     return save(
       button.dataset.key,

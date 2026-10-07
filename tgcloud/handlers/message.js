@@ -2,8 +2,10 @@ import { api } from 'sdk';
 import { home, help, connectShared } from '../lib/ui.js';
 import { clearPicker, getPicker } from '../lib/store.js';
 import { UserError } from '../lib/telegram.js';
+import { filterMessage } from '../lib/filters.js';
 
 export default async function (message) {
+  if (['group', 'supergroup'].includes(message.chat.type)) return filterMessage(message);
   if (message.chat.type !== 'private' || !message.from || message.from.is_bot) return;
   try {
     if (message.chat_shared) return await connectShared(message);

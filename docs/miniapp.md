@@ -49,7 +49,9 @@ pretends to have succeeded; the user can reload to reconcile an uncertain result
 | `getConnection` | none | pending/expired/ready and connected chat reference |
 
 `updateChat` keys: `enabled`, `mode`, `captchaType`, `attempts`, `failureAction`,
-`cleanSuccess`. Group/channel restrictions are enforced server-side. Both bot
+`cleanSuccess`, `blockGuest`, `guestMembersOnly`, `guestNotice`. Guest filter keys
+are booleans restricted to groups; enabling deletion verifies bot delete rights.
+Group/channel restrictions are enforced server-side. Both bot
 menus and Mini App modify the same SQLite records. Existing challenges keep the
 attempt/failure policy recorded at creation.
 
