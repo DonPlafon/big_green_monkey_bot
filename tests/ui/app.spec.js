@@ -385,57 +385,68 @@ test("inaccessible chat exposes no management controls and can be removed from a
   await expect(page.locator(".chat-row")).toHaveCount(2);
 });
 
-test("guest filters persist independently, keep the sheet open and surface failed saves", async ({
+test("guest policy has one selection, preserves notices and survives failed saves", async ({
   page,
 }) => {
   await bridge(page);
   await page.goto("/#/chat/-1001/settings");
-  await page.getByRole("button", { name: "фильтры выкл" }).click();
+  await page
+    .getByRole("button", { name: "гостевые боты разрешить всем" })
+    .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("switch", { name: "только для участников" }).click();
+  const members = dialog.getByRole("radio", { name: /^только для участников/ });
+  const block = dialog.getByRole("radio", { name: /^запретить/ });
+  const allow = dialog.getByRole("radio", { name: /^разрешить всем/ });
+  const notice = dialog.getByRole("switch", {
+    name: "показывать причину удаления",
+  });
+  await expect(allow).toBeChecked();
   await expect(
-    dialog.getByRole("switch", { name: "только для участников" }),
-  ).toBeChecked();
-  await dialog.getByRole("switch", { name: "объяснять удаление" }).click();
+    dialog.getByRole("button", { name: "как включить" }),
+  ).toHaveCount(0);
+  await members.click();
+  await expect(members).toBeChecked();
+  await expect(allow).not.toBeChecked();
+  await notice.click();
+  await expect(notice).toBeChecked();
+  await block.click();
+  await expect(block).toBeChecked();
+  await expect(members).not.toBeChecked();
   await expect(
-    dialog.getByRole("switch", { name: "объяснять удаление" }),
-  ).toBeChecked();
-  await dialog.getByRole("switch", { name: "удалять все ответы" }).click();
-  await expect(
-    dialog.getByRole("switch", { name: "удалять все ответы" }),
-  ).toBeChecked();
-  await expect(
-    dialog.getByRole("switch", { name: "только для участников" }),
-  ).toBeDisabled();
+    dialog.locator('[role="radio"][aria-checked="true"]'),
+  ).toHaveCount(1);
   await page.screenshot({
-    path: test.info().outputPath("guest-filters.png"),
+    path: test.info().outputPath("guest-policy.png"),
     fullPage: true,
   });
-  await dialog.getByRole("switch", { name: "удалять все ответы" }).click();
-  await expect(
-    dialog.getByRole("switch", { name: "только для участников" }),
-  ).toBeEnabled();
   await page.evaluate(() => (window.testFailSave = true));
-  await dialog.getByRole("switch", { name: "объяснять удаление" }).click();
+  await allow.click();
   await expect(dialog.getByRole("alert")).toBeVisible();
-  await expect(
-    dialog.getByRole("switch", { name: "объяснять удаление" }),
-  ).toBeChecked();
+  await expect(block).toBeChecked();
+  await expect(allow).not.toBeChecked();
   await page.evaluate(() => (window.testFailSave = false));
+  await allow.click();
+  await expect(allow).toBeChecked();
+  await expect(notice).toBeChecked();
   await dialog.getByRole("button", { name: "закрыть" }).click();
-  await page.getByRole("button", { name: "фильтры включены" }).click();
-  await expect(
-    dialog.getByRole("switch", { name: "только для участников" }),
-  ).toBeChecked();
+  await page
+    .getByRole("button", { name: "гостевые боты разрешить всем" })
+    .click();
+  await expect(allow).toBeChecked();
+  await expect(notice).toBeChecked();
   const saved = await page.evaluate(() =>
     window.testCalls.filter((c) => c.name === "updateChat"),
   );
   expect(
     saved.every(
-      (c) => typeof c.input.value === "boolean" && c.input.chatId === -1001,
+      (c) =>
+        c.input.chatId === -1001 &&
+        ["guestPolicy", "guestNotice"].includes(c.input.key),
     ),
   ).toBe(true);
   await dialog.getByRole("button", { name: "закрыть" }).click();
   await page.goto("/#/chat/-1002/settings");
-  await expect(page.getByRole("button", { name: /^фильтры/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /^гостевые боты/ }),
+  ).toHaveCount(0);
 });

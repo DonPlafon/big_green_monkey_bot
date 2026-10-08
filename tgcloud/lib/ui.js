@@ -2,6 +2,7 @@ import { api, db } from 'sdk';
 import { lower, escapeHtml, now, adminRights, canManage } from './domain.js';
 import { listChats, savePicker, getPicker, clearPicker, completePicker, connectChat, readEvents, stats, pending, setChat } from './store.js';
 import { authorize, checkBot, edit, UserError } from './telegram.js';
+import { guestPolicy } from './filter-settings.js';
 
 export const button = (text, data) => ({ text, callback_data: data });
 export const requestButton = (isChannel, id) => ({ text:isChannel ? 'канал' : 'группа', request_chat:{
@@ -47,7 +48,7 @@ export async function settings(target, chat) {
     [button('ожидают проверки', control(chat,'waiting'))]);
   if (chat.mode !== 'captcha') rows.push([button('ссылка с заявкой', control(chat,'invite'))]);
   if (chat.mode === 'requests') rows.push([button('ожидают проверки',control(chat,'waiting'))]);
-  if (chat.kind !== 'channel') rows.push([button('фильтры',control(chat,'filters'))]);
+  if (chat.kind !== 'channel') rows.push([button('гостевые боты',control(chat,'filters'))]);
   rows.push([button('статистика', control(chat,'stats')), button('журнал', control(chat,'logs'))],
     [button('проверить права', control(chat,'rights'))],
     [button('убрать из списка', control(chat,'remove'))], [button('‹ твои чаты', 'home:0')]);
@@ -61,11 +62,11 @@ export async function unavailableChat(target, chat) {
 }
 export async function filters(target, chat) {
   if (chat.kind === 'channel') throw new UserError('фильтры доступны только в группах');
-  const toggle = (label, field, action) => [button(`${chat[field] ? '●' : '○'} ${label}`, control(chat, action, chat[field] ? 0 : 1))];
-  return render(target, `${title(chat)}\n<b>guest mode</b>\n\nдля фильтра включи bot-to-bot communication в botfather и дай боту право удалять сообщения.`, [
-    toggle('удалять все ответы', 'block_guest', 'guestall'),
-    ...(!chat.block_guest ? [toggle('только для участников', 'guest_members_only', 'guestmembers')] : []),
-    toggle('объяснять удаление', 'guest_notice', 'guestnotice'),
+  const policy = guestPolicy(chat);
+  const choices = [['block','запретить'],['members','только для участников'],['allow','разрешить всем']];
+  return render(target, `${title(chat)}\n<b>гостевые боты</b>\n\nзапретить — удалять все их сообщения.\nтолько для участников — человек вступил и прошёл капчу, если она ему выдавалась.\nразрешить всем — не удалять.\n\nобычные сообщения не затрагиваются.`, [
+    ...choices.map(([value,label]) => [button(`${policy === value ? '●' : '○'} ${label}`,control(chat,'guestmode',value))]),
+    [button(`${chat.guest_notice ? '●' : '○'} показывать причину удаления`,control(chat,'guestnotice',chat.guest_notice ? 0 : 1))],
     back(chat),
   ]);
 }

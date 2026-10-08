@@ -105,11 +105,13 @@ Avatars load independently of settings. The bot tries to resolve a public Telegr
 
 ## Guest mode filters
 
-Open a group’s **фильтры** (filters). The Mini App and inline bot menu share three switches:
+Open a group’s **гостевые боты** (guest bots). The Mini App and inline bot menu offer one selected mode:
 
-- **удалять все ответы** — delete every guest bot response, including those invoked by administrators.
-- **только для участников** — when the full block is off, check the invoking user’s live membership, latest captcha and individual sending restriction. Owners and administrators are allowed. Existing members who were never issued a captcha do not need a new one. Calls on behalf of external channels are rejected because their owner’s membership cannot be verified; anonymous administrators of this group are allowed.
-- **объяснять удаление** — explain a deletion with a short request to join, finish the captcha, or write without a guest bot. Notices are quiet, never quote spam or reply to the guest bot, and are limited to one per group per minute.
+- **запретить** (block) — delete every guest bot response, including those invoked by administrators.
+- **только для участников** (members only) — check the invoking user’s live membership, latest captcha and individual sending restriction. Owners and administrators are allowed. Existing members who were never issued a captcha do not need a new one. Calls on behalf of external channels are rejected because their owner’s membership cannot be verified; anonymous administrators of this group are allowed.
+- **разрешить всем** (allow all) — do not delete guest responses.
+
+The separate **показывать причину удаления** (show deletion reason) switch enables short notices asking users to join, finish a captcha, or stop using guest bots. Notices are quiet, never quote spam or reply to the guest bot, and are limited to one per group per minute. Changing the policy preserves this switch. Existing chat policies are retained across this update.
 
 Filters start disabled and respect the chat’s main pause switch. Ordinary messages and inline-bot results (`via_bot`) are unaffected. New and edited messages are handled; old history is not scanned. Deletion follows an incoming update, so a message can briefly appear before removal.
 

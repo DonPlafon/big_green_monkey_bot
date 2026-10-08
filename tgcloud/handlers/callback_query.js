@@ -38,11 +38,11 @@ export default async function (query) {
       await answer(query); acknowledged = true;
       return await unavailableChat(target,saved);
     }
-    const filterKeys = { guestall:'blockGuest', guestmembers:'guestMembersOnly', guestnotice:'guestNotice' };
+    const filterKeys = { guestall:'blockGuest', guestmembers:'guestMembersOnly', guestnotice:'guestNotice', guestmode:'guestPolicy' };
     if (action === 'filters' || Object.hasOwn(filterKeys,action)) {
       if (action !== 'filters') {
-        if (!['0','1'].includes(value)) throw new UserError('кнопка устарела');
-        await setGuestFilter(chat,filterKeys[action],value === '1');
+        if (action !== 'guestmode' && !['0','1'].includes(value)) throw new UserError('кнопка устарела');
+        await setGuestFilter(chat,filterKeys[action],action === 'guestmode' ? value : value === '1');
       }
       await answer(query); acknowledged = true;
       return await filters(target,await getChat(chatId));

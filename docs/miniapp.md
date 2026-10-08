@@ -49,8 +49,11 @@ pretends to have succeeded; the user can reload to reconcile an uncertain result
 | `getConnection` | none | pending/expired/ready and connected chat reference |
 
 `updateChat` keys: `enabled`, `mode`, `captchaType`, `attempts`, `failureAction`,
-`cleanSuccess`, `blockGuest`, `guestMembersOnly`, `guestNotice`. Guest filter keys
-are booleans restricted to groups; enabling deletion verifies bot delete rights.
+`cleanSuccess`, `guestPolicy` (`block`, `members`, `allow`), `guestNotice` (boolean).
+Guest policies are restricted to groups; enabling deletion verifies bot delete rights.
+Changing the policy updates both underlying flags in one write. Reads derive the
+effective policy from existing flags, preserving current protection. Legacy
+`blockGuest` and `guestMembersOnly` boolean keys remain for already-open clients.
 Group/channel restrictions are enforced server-side. Both bot
 menus and Mini App modify the same SQLite records. Existing challenges keep the
 attempt/failure policy recorded at creation.

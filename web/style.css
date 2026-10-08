@@ -586,13 +586,12 @@ h2 {
   gap: 6px;
   margin-bottom: 15px;
 }
-.guest-help {
+.guest-scope {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.7;
-}
-.guest-help p + p {
-  margin-top: 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+  margin: 14px 5px 18px;
 }
 .chip {
   flex: 1;

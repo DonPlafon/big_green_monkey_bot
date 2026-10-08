@@ -13,7 +13,12 @@ import { manuallyPass } from "./captcha.js";
 import { requestButton } from "./ui.js";
 import { savedChat, removeSavedChat } from "./chat-list.js";
 import { chatPhoto } from "./avatars.js";
-import { FILTER_COLUMNS, setGuestFilter } from "./filter-settings.js";
+import {
+  FILTER_COLUMNS,
+  GUEST_POLICIES,
+  guestPolicy,
+  setGuestFilter,
+} from "./filter-settings.js";
 
 // Authentication is supplied by Telegram. Live authorization protects chat data
 // and moderation; personal list metadata/removal grants no access to either.
@@ -73,6 +78,7 @@ function publicChat(row) {
     blockGuest: !!row.block_guest,
     guestMembersOnly: !!row.guest_members_only,
     guestNotice: !!row.guest_notice,
+    guestPolicy: guestPolicy(row),
   };
 }
 export async function getChats(input, userId) {
@@ -121,8 +127,12 @@ export async function updateChat(input, userId) {
   const id = chatId(input),
     chat = await authorize(id, userId);
   const { key, value } = input;
-  if (Object.hasOwn(FILTER_COLUMNS, key)) {
-    if (typeof value !== "boolean")
+  if (key === "guestPolicy" || Object.hasOwn(FILTER_COLUMNS, key)) {
+    if (
+      key === "guestPolicy"
+        ? !GUEST_POLICIES.includes(value)
+        : typeof value !== "boolean"
+    )
       throw new EndpointError("неверная настройка", { code: "INVALID_INPUT" });
     await setGuestFilter(chat, key, value);
     return { chat: publicChat(await getChat(id)) };

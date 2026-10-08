@@ -339,13 +339,80 @@ test("inline settings share filters and rights checks with the Mini App", async 
       .guest_members_only,
     1,
   );
-  assert.match(calls(r, "editMessageText").at(-1).params.text, /guest mode/);
+  assert.match(calls(r, "editMessageText").at(-1).params.text, /гостевые боты/);
+  await r.handle("callback_query", query("c:-1001:guestmode:block"));
+  assert.equal(
+    r.sqlite
+      .prepare("SELECT block_guest+guest_members_only AS n FROM chats")
+      .get().n,
+    1,
+  );
+  await r.handle("callback_query", query("c:-1001:guestmode:allow"));
+  assert.equal(
+    r.sqlite
+      .prepare("SELECT block_guest+guest_members_only AS n FROM chats")
+      .get().n,
+    0,
+  );
   r.members.set("-1001:1", { status: "member" });
   await r.handle("callback_query", query("c:-1001:guestall:1"));
   assert.equal(
     r.sqlite.prepare("SELECT block_guest FROM chats").get().block_guest,
     0,
   );
+});
+
+test("one guest policy preserves existing protection and changes both flags together", async () => {
+  const { r, store } = await setup({
+    block_guest: 1,
+    guest_members_only: 1,
+    guest_notice: 1,
+  });
+  const details = (await r.module("endpoints/getChatDetails")).default;
+  assert.equal(
+    (await details({ chatId: -1001 }, { initData: { user: { id: 1 } } })).chat
+      .guestPolicy,
+    "block",
+  );
+  for (const [policy, block, members] of [
+    ["members", 0, 1],
+    ["block", 1, 0],
+    ["allow", 0, 0],
+  ]) {
+    const result = await run(r, "guestPolicy", policy);
+    const row = await store.getChat(-1001);
+    assert.equal(result.chat.guestPolicy, policy);
+    assert.equal(row.block_guest, block);
+    assert.equal(row.guest_members_only, members);
+    assert.equal(row.guest_notice, 1);
+  }
+  await run(r, "guestPolicy", "block");
+  r.members.get("-1001:999").can_delete_messages = false;
+  await assert.rejects(run(r, "guestPolicy", "members"), /право удалять/);
+  assert.equal((await store.getChat(-1001)).block_guest, 1);
+  assert.equal(
+    (await run(r, "guestPolicy", "allow")).chat.guestPolicy,
+    "allow",
+  );
+});
+
+test("guest policy rejects invalid modes, channels and unauthorized users", async () => {
+  const { r, store } = await setup();
+  await r.connect(-1002, 1, "channel");
+  for (const value of [true, 1, null, {}, "__proto__", "invalid"])
+    await assert.rejects(
+      run(r, "guestPolicy", value),
+      (e) => e.parameters.code === "INVALID_INPUT",
+    );
+  await assert.rejects(
+    run(r, "guestPolicy", "allow", -1001, 2),
+    (e) => e.parameters.code === "ACTION_DENIED",
+  );
+  await assert.rejects(
+    run(r, "guestPolicy", "block", -1002),
+    (e) => e.parameters.code === "ACTION_DENIED",
+  );
+  assert.equal((await store.getChat(-1001)).block_guest, 1);
 });
 
 test("losing deletion rights updates availability and filter journal stays scoped", async () => {
